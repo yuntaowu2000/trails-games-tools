@@ -1,21 +1,8 @@
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
-from azure.cognitiveservices.vision.computervision.models import OperationStatusCodes
-from azure.cognitiveservices.vision.computervision.models import VisualFeatureTypes
 from msrest.authentication import CognitiveServicesCredentials
-import json
-import os
-import sys
-import requests
-import time
 # If you are using a Jupyter notebook, uncomment the following line.
 # %matplotlib inline
-from PIL import Image
-from io import BytesIO
-from array import array
-import os
-from PIL import Image
 import sys
-import time
 from google_trans_new import google_translator
 
 endpoint = "https://sennokisekiocr.cognitiveservices.azure.com/"
