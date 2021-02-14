@@ -1,7 +1,4 @@
-from typing import Text
 import fitz
-import time
-import re
 import os
 
 def pdf2pic(path, pic_path):
@@ -23,6 +20,6 @@ def pdf2pic(path, pic_path):
             imgcount += 1
 
 if __name__=='__main__':
-    path = r"C:\Users\yunta\Desktop\trails-game\tx_treasure\test\东京迷城ex+攻略.pdf"
+    path = r"D:\Downloads\那由多之轨迹图文流程攻略.pdf"
     pic_path = r'C:\Users\yunta\Desktop\trails-game\tx_treasure\test'
     pdf2pic(path, pic_path)

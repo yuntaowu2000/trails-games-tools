@@ -1,6 +1,5 @@
 import re, sys
 import opencc
-import unicodedata
 
 def strQ2B(ustring):
     rstring = ""

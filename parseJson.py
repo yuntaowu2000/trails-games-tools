@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 
+# not maintained, check https://github.com/trails-game/relation-graph-3d-force/blob/master/tools/parseJson.py for updated version
 file="relation.xls"
 
 id = 0

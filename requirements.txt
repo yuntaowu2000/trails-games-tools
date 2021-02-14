@@ -1,0 +1,9 @@
+requests
+PIL
+wand
+bs4
+azure.cognitiveservices.vision.computervision
+msrest.authentication
+google_trans_new
+opencc
+fitz
