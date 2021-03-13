@@ -10,8 +10,8 @@ def parse_json(sheet, output, names):
         if not str(v["url"]) == "nan" and not v["name"] in names:
             names.add(v["name"])
 
-            star_val = random.randint(0, 5)
-            #new_node = {"url": v["url"],"name": v["name"], "star": star_val}
+            # star_val = random.randint(0, 5)
+            # new_node = {"url": v["url"],"name": v["name"], "star": star_val}
             new_node = {"url": v["url"],"name": v["name"], "star": v["stars"]}
 
             output.append(new_node)
