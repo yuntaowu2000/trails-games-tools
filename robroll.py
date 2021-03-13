@@ -12,7 +12,7 @@ def parse_json(sheet, output, names):
 
             # star_val = random.randint(0, 5)
             # new_node = {"url": v["url"],"name": v["name"], "star": star_val}
-            new_node = {"url": v["url"],"name": v["name"], "star": v["stars"]}
+            new_node = {"url": v["url"],"name": v["name"], "star": v["star"]}
 
             output.append(new_node)
 
