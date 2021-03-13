@@ -1,38 +1,18 @@
 import pandas as pd
 import random
 import json
-import threading
-import requests
 import os
 
-# SEARCH_URL = "https://trails-game.com/wp-json/wp/v2/search"
-# BASE_URL = "https://trails-game.com/?p="
-
-# def search_for_link(name, new_node):
-#     retval = BASE_URL + "1355"
-
-#     result = requests.get(SEARCH_URL, 
-#         params={"type":"post", 
-#         "subtype": "dt_team", 
-#         "per_page":"1",
-#         "search": name})
-
-#     if result is None:
-#         response_json = result.json()
-#         if len(response_json) > 0:
-#             retval = response_json[0]["url"]
-    
-#     new_node["url"] = retval
-
 def parse_json(sheet, output, names):
-    values = sheet["角色"].to_dict(orient="records")
+    values = sheet["抽卡"].to_dict(orient="records")
 
     for v in values:
-        if v["type"] == "Char" and not str(v["avatar"]) == "nan" and not v["name"] in names:
+        if not str(v["url"]) == "nan" and not v["name"] in names:
             names.add(v["name"])
 
             star_val = random.randint(0, 5)
-            new_node = {"url": v["avatar"],"name": v["name"], "star": star_val}
+            #new_node = {"url": v["url"],"name": v["name"], "star": star_val}
+            new_node = {"url": v["url"],"name": v["name"], "star": v["stars"]}
 
             output.append(new_node)
 
