@@ -1,7 +1,29 @@
 import pandas as pd
-import random
+import requests
+import threading
 import json
 import os
+
+def request_header(v, failed_links):
+    result = requests.head(str(v["url"]))
+    if result.status_code != 200:
+        failed_links[v["name"]] = str(v["url"])
+
+def test_header(sheet, failed_links):
+    values = sheet["抽卡"].to_dict(orient="records")
+    thread_list = []
+    for v in values:
+        if str(v["url"]) == "nan":
+            failed_links[v["name"]] = str(v["url"])
+            continue
+        t = threading.Thread(target=request_header, args=(v, failed_links))
+        thread_list.append(t)
+        t.start()
+
+    for t in thread_list:
+        t.join()
+    print(failed_links)
+
 
 def parse_json(sheet, output, names):
     values = sheet["抽卡"].to_dict(orient="records")
@@ -40,4 +62,9 @@ def run():
     write_outputs(output)
 
 if __name__ == "__main__":
+    # failed_links = {}
+    # file = os.path.join(os.getcwd(), "relation.xlsx")
+    # sheet = pd.read_excel(file, None)
+
+    # test_header(sheet, failed_links)
     run()
