@@ -7,7 +7,7 @@ im = Image.open(filename)
 imgwidth, imgheight = im.size
 
 
-result = im.crop((411, 144, 1500, 1045))
+result = im.crop((0, 0, 567, 230))
 
 if (not os.path.exists("output")):
     os.makedirs("output")
