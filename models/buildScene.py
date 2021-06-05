@@ -28,7 +28,7 @@ for i in range(len(map_asset)):
 shapes_to_exclude = ["CA", "CK", "CO", "CS"]
 
 for obj in bpy.context.scene.objects: 
-    if obj.name[0:2] in shapes_to_exclude or obj.name[0:7] == "Yup2Zup":
-        obj.select_set(state=True)
+   if obj.name[0:2] in shapes_to_exclude or obj.name[0:7] == "Yup2Zup" or "light_locator" in obj.name or "light_all" in obj.name or "window_dawn" in obj.name or "window_evening" in obj.name or "window_morning" in obj.name or "window_night" in obj.name:
+      obj.select_set(state=True)
         
 bpy.ops.object.delete()
