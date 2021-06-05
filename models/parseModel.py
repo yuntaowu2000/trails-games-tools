@@ -24,9 +24,8 @@ scale = []
 threads = set()
 
 for asset in assets:
-    # currently only house and main map are considered.
-    # can add obj files 
-    if asset["asset"][0] == "M" or "HOU" in asset["asset"]:
+    # currently only house, obj and main map are considered.
+    if asset["asset"][0] == "M" or "HOU" in asset["asset"] or "OBJ" in asset["asset"]:
         map_asset.append(asset["asset"][2:].lower() + ".glb")
         pkg_to_unpack.add(asset["asset"] + ".pkg")
         pos.append(asset["pos"])
