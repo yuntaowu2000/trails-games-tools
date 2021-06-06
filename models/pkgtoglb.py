@@ -3169,7 +3169,7 @@ def gltf_export(g, cluster_mesh_info, cluster_info, cluster_header, pdatablock_l
             f.write(embedded_giant_buffer_joined)
 
 
-def standalone_main(fn):
+def standalone_main(fn=None):
     in_name = sys.argv[1] if fn is None else fn
     is_cluster = False
     is_pkg = False

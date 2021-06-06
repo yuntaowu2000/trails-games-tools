@@ -29,7 +29,7 @@ def unpack(path, fn=None):
 			file_entry_hash, file_entry_offset, file_entry_compressed_size, file_entry_uncompressed_size, file_entry_flags = struct.unpack("<32sQIII", f.read(32+8+4+4+4))
 			file_entries[file_entry_hash] = [file_entry_offset, file_entry_compressed_size, file_entry_uncompressed_size, file_entry_flags]
 		for package_name in package_entries.keys():
-			if not package_name in fn:
+			if fn is not None and not package_name in fn:
 				continue
 			package_file_entries = package_entries[package_name]
 			rebased_package_file_entries = {}
