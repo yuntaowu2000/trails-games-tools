@@ -3174,6 +3174,7 @@ def standalone_main(fn=None):
     is_cluster = False
     is_pkg = False
     storage_media = None
+    is_all_textures = False
     with open(in_name, 'rb') as (f):
         header1 = f.read(4)
         if len(header1) == 4:
@@ -3190,9 +3191,21 @@ def standalone_main(fn=None):
                 items.append(item)
 
         storage_media.get_list_at('.', list_callback)
+        if len(items) == 0:
+            is_all_textures = True
+            def list_callback2(item):
+                if item[-10:-6] == '.dds':
+                    items.append(item)
+
+            storage_media.get_list_at('.', list_callback2)
         for item in items:
             parse_cluster(item, None, storage_media)
 
+        if is_all_textures and os.path.isfile("texconv.exe"):
+            # if you want to dump the textures in PNG formats instead of default BC7
+            # you need to have this executable ready https://github.com/Microsoft/DirectXTex/wiki/Texconv
+            # within the same directory as this file
+            os.system("for %f in (*.dds) do texconv.exe -vflip -ft png %f -y && del %f")
     else:
         raise Exception('Passed in file is not compatible file')
 

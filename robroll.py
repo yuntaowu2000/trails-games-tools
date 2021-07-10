@@ -16,7 +16,7 @@ def test_header(sheet, failed_links):
         if str(v["url"]) == "nan":
             failed_links[v["name"]] = str(v["url"])
             continue
-        t = threading.Thread(target=request_header, args=(v, failed_links))
+        t = threading.Thread(target=lambda:request_header(v, failed_links))
         thread_list.append(t)
         t.start()
 
@@ -62,9 +62,9 @@ def run():
     write_outputs(output)
 
 if __name__ == "__main__":
-    # failed_links = {}
-    # file = os.path.join(os.getcwd(), "relation.xlsx")
-    # sheet = pd.read_excel(file, None)
+    #failed_links = {}
+    #file = os.path.join(os.getcwd(), "relation.xlsx")
+    #sheet = pd.read_excel(file, None)
 
-    # test_header(sheet, failed_links)
+    #test_header(sheet, failed_links)
     run()
