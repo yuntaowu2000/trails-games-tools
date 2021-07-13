@@ -1,5 +1,7 @@
 # this code is from uyjulian ed8pkg2glb https://github.com/uyjulian/ed8pkg2glb
-import os, gc, sys, io, struct, array
+import os, sys, io, struct, array
+import numpy
+from PIL import Image, ImageOps
 
 def read_null_ending_string(f):
     import itertools, functools
@@ -1931,25 +1933,41 @@ def create_texture(g, dict_data, cluster_mesh_info, cluster_header, is_cube_map)
         image_data = g.read(cluster_mesh_info.cluster_header['m_maxTextureBufferSize'])
     elif cluster_header.platform_id == GCM_PLATFORM:
         image_data = g.read(cluster_mesh_info.cluster_header['m_vramBufferSize'])
-    pitch = 0
-    if cluster_header.platform_id == GNM_PLATFORM:
-        temporary_pitch = GetInfo(struct.unpack('<I', dict_data['m_texState'][24:28])[0], 26, 13) + 1
-        if image_width != temporary_pitch:
-            pitch = temporary_pitch
-    if cluster_header.platform_id == GNM_PLATFORM or cluster_header.platform_id == GXM_PLATFORM:
-        image_data = Unswizzle(image_data, image_width, image_height, dict_data["m_format"], True, cluster_header.platform_id, pitch)
-    elif cluster_header.platform_id == GCM_PLATFORM:
-        size_map = {'ARGB8': 4, 
-         'RGBA8': 4, 
-         'ARGB4444': 2, 
-         'L8': 1, 
-         'LA8': 2}
-        if dict_data['m_format'] in size_map:
-            image_data = Unswizzle(image_data, image_width, image_height, dict_data['m_format'], True, cluster_header.platform_id, pitch)
-    dds_output_path = cluster_mesh_info.filename.split('.', 1)[0] + '.dds'
-    with cluster_mesh_info.storage_media.open(dds_output_path, 'wb') as (f):
-        f.write(get_dds_header(dict_data['m_format'], image_width, image_height, None, False))
-        f.write(image_data)
+    
+    if ".png" in cluster_mesh_info.filename:
+        depth = int(len(image_data) / image_height / image_width)
+        image_byte_data = numpy.frombuffer(image_data, dtype=numpy.uint8)
+        arr = numpy.zeros([image_height, image_width, depth], dtype=numpy.uint8)
+        k = 0
+        for i in range(image_height):
+            for j in range(image_width):
+                for d in range(depth):
+                    arr[i][j][d] = image_byte_data[k]
+                    k += 1
+        img = Image.fromarray(arr)
+        img = ImageOps.flip(img)
+        img.save(cluster_mesh_info.filename[:-6])
+
+    else: 
+        pitch = 0
+        if cluster_header.platform_id == GNM_PLATFORM:
+            temporary_pitch = GetInfo(struct.unpack('<I', dict_data['m_texState'][24:28])[0], 26, 13) + 1
+            if image_width != temporary_pitch:
+                pitch = temporary_pitch
+        if cluster_header.platform_id == GNM_PLATFORM or cluster_header.platform_id == GXM_PLATFORM:
+            image_data = Unswizzle(image_data, image_width, image_height, dict_data["m_format"], True, cluster_header.platform_id, pitch)
+        elif cluster_header.platform_id == GCM_PLATFORM:
+            size_map = {'ARGB8': 4, 
+            'RGBA8': 4, 
+            'ARGB4444': 2, 
+            'L8': 1, 
+            'LA8': 2}
+            if dict_data['m_format'] in size_map:
+                image_data = Unswizzle(image_data, image_width, image_height, dict_data['m_format'], True, cluster_header.platform_id, pitch)
+        dds_output_path = cluster_mesh_info.filename.split('.', 1)[0] + '.dds'
+        with cluster_mesh_info.storage_media.open(dds_output_path, 'wb') as (f):
+            f.write(get_dds_header(dict_data['m_format'], image_width, image_height, None, False))
+            f.write(image_data)
 
 
 def load_texture(dict_data, cluster_mesh_info):
@@ -3174,7 +3192,7 @@ def standalone_main(fn=None):
     is_cluster = False
     is_pkg = False
     storage_media = None
-    is_all_textures = False
+    is_dds_only = False
     with open(in_name, 'rb') as (f):
         header1 = f.read(4)
         if len(header1) == 4:
@@ -3191,8 +3209,16 @@ def standalone_main(fn=None):
                 items.append(item)
 
         storage_media.get_list_at('.', list_callback)
+
         if len(items) == 0:
-            is_all_textures = True
+            def list_callback_png(item):
+                if item[-10:-6] == '.png':
+                    items.append(item)
+            
+            storage_media.get_list_at('.', list_callback_png)
+
+        if len(items) == 0:
+            is_dds_only = True
             def list_callback2(item):
                 if item[-10:-6] == '.dds':
                     items.append(item)
@@ -3201,11 +3227,16 @@ def standalone_main(fn=None):
         for item in items:
             parse_cluster(item, None, storage_media)
 
-        if is_all_textures and os.path.isfile("texconv.exe"):
+        if is_dds_only and os.path.isfile("texconv.exe"):
+            # we only have dds textures in the pkg
             # if you want to dump the textures in PNG formats instead of default BC7
             # you need to have this executable ready https://github.com/Microsoft/DirectXTex/wiki/Texconv
             # within the same directory as this file
             os.system("for %f in (*.dds) do texconv.exe -vflip -ft png %f -y && del %f")
+
+        if os.path.isfile("texconv.exe"):
+            # change all model dds files to dxt 1 format so that Blender can read them
+            os.system("for %f in (*.dds) do texconv.exe -f DXT1 %f -y")
     else:
         raise Exception('Passed in file is not compatible file')
 
