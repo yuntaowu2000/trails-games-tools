@@ -496,11 +496,6 @@ def process_data_members(g, cluster_info, id, member_location, array_location, c
                     if expected_size == 5:
                         g.seek(1, io.SEEK_CUR)
                     
-                    
-                    
-                    
-                    
-                    
                 elif (type_text[0:7] == "PArray<") and (type_text[-1:] == ">") and type(dict_data[variable_text]) is dict:
                     array_count = dict_data[variable_text]["m_count"]
                     current_count = 0
@@ -549,26 +544,6 @@ def process_data_members(g, cluster_info, id, member_location, array_location, c
                             if not pointer_info.is_class_data_member():
                                 for x in range(len(val)):
                                     value_this = val[x]
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
-                                    
                                     pointer_info_offset_needed = pointer_info.som
                                     if value_this["m_parameterType"] == 71: 
                                         pointer_info_offset_needed -= 8
