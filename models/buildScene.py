@@ -18,6 +18,7 @@ for i in range(len(map_asset)):
 
    curr_scale = [float(s) for s in scale[i].split(",")]
 
+   # replace with path to the path with all related glb files
    bpy.ops.import_scene.gltf(filepath="D:\\kiseki_files\\test\\" + map_asset[i])
    ob = bpy.context.object
    ob.location = (curr_pos[0], -curr_pos[2], curr_pos[1])
