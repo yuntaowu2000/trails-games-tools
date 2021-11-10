@@ -2,6 +2,7 @@
 import os, sys, io, struct, array
 import numpy
 from PIL import Image, ImageOps
+import zstandard as zstd
 
 def read_null_ending_string(f):
     import itertools, functools
@@ -1726,6 +1727,12 @@ class TED8PkgMedia(IStorageMedia):
             self.f.seek(4, io.SEEK_CUR)
         if file_entry[3] & 4:
             output_data = uncompress_lz4(self.f, file_entry[2], file_entry[1])
+        elif file_entry[3] & 8:
+            dctx = zstd.ZstdDecompressor()
+            output_data = b""
+            output_data_iter = dctx.read_to_iter(self.f, file_entry[2], file_entry[1])
+            for chunk in output_data_iter:
+                output_data += chunk
         elif file_entry[3] & 1:
             output_data = uncompress_nislzss(self.f, file_entry[2], file_entry[1])
         else:
