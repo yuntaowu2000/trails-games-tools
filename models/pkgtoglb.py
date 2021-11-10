@@ -3216,9 +3216,6 @@ def standalone_main(fn=None):
             # within the same directory as this file
             os.system("for %f in (*.dds) do texconv.exe -vflip -ft png %f -y && del %f")
 
-        if os.path.isfile("texconv.exe"):
-            # change all model dds files to dxt 1 format so that Blender can read them
-            os.system("for %f in (*.dds) do texconv.exe -f DXT1 %f -y")
     else:
         raise Exception('Passed in file is not compatible file')
 

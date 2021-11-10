@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 from pkgtoglb import standalone_main
 import json
 import threading
+import os
 
 # replace with path to game files
 # ops xml files records all the objects in a scene
@@ -66,6 +67,10 @@ for pkg in pkg_to_unpack:
 
 for t in threads:
     t.join()
+
+if os.path.isfile("texconv.exe"):
+    # change all model dds files to dxt 1 format so that Blender can read them
+    os.system("for %f in (*.dds) do texconv.exe -f DXT1 %f -y")
 
 if len(failed_pkgs) > 0:
     # zstd decompression may fail when there are too many threads
