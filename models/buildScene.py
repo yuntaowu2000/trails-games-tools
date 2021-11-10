@@ -33,10 +33,11 @@ for i in range(len(map_asset)):
    ob.rotation_euler = (math.pi / 2, curr_rot[2], curr_rot[1])
    ob.scale = (curr_scale[0], curr_scale[1], curr_scale[2])
 
-shapes_to_exclude = ["CA", "CK", "CO", "CS"]
+shapes_to_exclude = ["CA", "CK", "CO", "CS", "CP"]
 
 for obj in bpy.context.scene.objects: 
    if obj.name[0:2] in shapes_to_exclude or obj.name[0:7] == "Yup2Zup" or "shadow" in obj.name or "light_locator" in obj.name or "light_all" in obj.name or "window_dawn" in obj.name or "window_evening" in obj.name or "window_morning" in obj.name or "window_night" in obj.name:
       obj.select_set(state=True)
-        
+   if "directionalLight" in obj.name:
+      obj.select_set(state=True)
 bpy.ops.object.delete()
