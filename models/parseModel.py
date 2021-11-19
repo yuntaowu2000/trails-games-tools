@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 from pkgtoglb import standalone_main
 import json
-import threading
+# import threading
 import os
 
 # replace with path to game files
@@ -21,7 +21,7 @@ pkg_to_unpack = set()
 pos = []
 rot = []
 scale = []
-threads = set()
+# threads = set()
 
 for asset in assets:
     # currently only house, obj and main map are considered.
@@ -61,12 +61,14 @@ def target_wrapper(pkg):
         failed_pkgs.append(pkg)
 
 for pkg in pkg_to_unpack:
-    t = threading.Thread(target=lambda:target_wrapper(pkg))
-    threads.add(t)
-    t.start()
+    # t = threading.Thread(target=lambda:target_wrapper(pkg))
+    # threads.add(t)
+    # t.start()
+    # remove threading for buffer related errors
+    target_wrapper(pkg)
 
-for t in threads:
-    t.join()
+# for t in threads:
+#     t.join()
 
 if os.path.isfile("texconv.exe"):
     # change all model dds files to dxt 1 format so that Blender can read them
