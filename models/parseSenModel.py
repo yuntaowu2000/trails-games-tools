@@ -2,11 +2,12 @@ from bs4 import BeautifulSoup
 from pkgtoglb import standalone_main
 import json
 # import threading
-import os
+import os, sys
 
 # replace with path to game files
 # ops xml files records all the objects in a scene
-xml_file = "E:\\SteamLibrary\\steamapps\\common\\THE LEGEND OF HEROES HAJIMARI NO KISEKI\\data\\ops\\c1400.ops"
+map_id = sys.argv[1]
+xml_file = "E:\\SteamLibrary\\steamapps\\common\\THE LEGEND OF HEROES HAJIMARI NO KISEKI\\data\\ops\\" + map_id + ".ops"
 path = "E:\\SteamLibrary\\steamapps\\common\\THE LEGEND OF HEROES HAJIMARI NO KISEKI\\data\\asset\\D3D11\\"
 
 with open(xml_file, 'r') as f:
@@ -16,32 +17,25 @@ bs_data = BeautifulSoup(data, "xml")
 
 assets = bs_data.find_all("AssetObject")
 
-map_asset = []
 pkg_to_unpack = set()
-pos = []
-rot = []
-scale = []
-# threads = set()
+data_list = []
 
 for asset in assets:
-    # currently only house, obj and main map are considered.
-    if asset["asset"][0] == "M" or "HOU" in asset["asset"] or "OBJ" in asset["asset"]:
-        map_asset.append(asset["asset"][2:].lower() + ".glb")
+    # # currently only house, obj and main map are considered.
+    # if asset["asset"][0] == "M" or "HOU" in asset["asset"] or "OBJ" in asset["asset"]:
+    curr_data = {}
+    curr_data["name"] = asset["asset"]
+    curr_data["map_asset"] = asset["asset"][2:].lower() + ".glb"
+    if not os.path.exists(asset["asset"] + ".pkg"):
         pkg_to_unpack.add(asset["asset"] + ".pkg")
-        pos.append(asset["pos"])
-        rot.append(asset["rot"])
-        scale.append(asset["scl"])
+    curr_data["pos"] = asset["pos"]
+    curr_data["rot"] = asset["rot"]
+    curr_data["scale"] = asset["scl"]
+    data_list.append(curr_data)
 
-data_dict = {
-    "map_asset": map_asset,
-    "pos" : pos,
-    "rot" : rot,
-    "scale" : scale
-}
+data_json = json.dumps(data_list, indent=4)
 
-data_json = json.dumps(data_dict, indent=4)
-
-with open("data.json", "w") as f:
+with open(map_id + ".json", "w") as f:
     f.write(data_json)
 
 if path[-4:] == ".pka":
@@ -61,14 +55,7 @@ def target_wrapper(pkg):
         failed_pkgs.append(pkg)
 
 for pkg in pkg_to_unpack:
-    # t = threading.Thread(target=lambda:target_wrapper(pkg))
-    # threads.add(t)
-    # t.start()
-    # remove threading for buffer related errors
     target_wrapper(pkg)
-
-# for t in threads:
-#     t.join()
 
 if os.path.isfile("texconv.exe"):
     # change all model dds files to dxt 1 format so that Blender can read them

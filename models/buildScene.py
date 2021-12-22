@@ -4,26 +4,23 @@ import bpy
 import json
 import os
 
-# replace with path to the data.json output from parseModel.py
+# replace with path to the json output from parseModel.py
 folder_path = "D:\\test\\"
-with open(folder_path + "data.json", "r") as f:
+json_name = "c0000.json"
+with open(folder_path + json_name, "r") as f:
    data = json.loads(f.read())
-   map_asset = data["map_asset"]
-   pos = data["pos"]
-   rot = data["rot"]
-   scale = data["scale"]
 
-for i in range(len(map_asset)):
-   fp = folder_path + map_asset[i]
+for i in range(len(data)):
+   fp = folder_path + data[i]["map_asset"]
    if not os.path.exists(fp): continue
-   curr_pos = [float(p) for p in pos[i].split(",")]
+   curr_pos = [float(p) for p in data[i]["pos"].split(",")]
 
    # remove any outliers (they are mostly background objects that are not really related to the map)
    if abs(curr_pos[0]) >= 500 or abs(curr_pos[1]) >= 500 or abs(curr_pos[2]) >= 500: continue
 
-   curr_rot = [float(r) for r in rot[i].split(",")]
+   curr_rot = [float(r) for r in data[i]["rot"].split(",")]
 
-   curr_scale = [float(s) for s in scale[i].split(",")]
+   curr_scale = [float(s) for s in data[i]["scale"].split(",")]
 
    # replace with path to the path with all related glb files
    bpy.ops.import_scene.gltf(filepath=fp)
@@ -38,6 +35,7 @@ for i in range(len(map_asset)):
    # for blender version 2.82, can use the following
    # ob.rotation_euler = (math.pi / 2, curr_rot[2], curr_rot[1])
    ob.scale = (curr_scale[0], curr_scale[1], curr_scale[2])
+   ob.name = data[i]["name"]
 
 shapes_to_exclude = ["CA", "CK", "CO", "CS", "CP"]
 
