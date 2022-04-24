@@ -15,9 +15,6 @@ for i in range(len(data)):
    if not os.path.exists(fp): continue
    curr_pos = [float(p) for p in data[i]["pos"].split(",")]
 
-   # remove any outliers (they are mostly background objects that are not really related to the map)
-   if abs(curr_pos[0]) >= 500 or abs(curr_pos[1]) >= 500 or abs(curr_pos[2]) >= 500: continue
-
    curr_rot = [float(r) for r in data[i]["rot"].split(",")]
 
    curr_scale = [float(s) for s in data[i]["scale"].split(",")]
@@ -44,7 +41,20 @@ for obj in bpy.context.scene.objects:
       obj.select_set(state=True)
    if "directionalLight" in obj.name:
       obj.select_set(state=True)
-   if abs(obj.location[0])>=500 or abs(obj.location[1])>=500 or abs(obj.location[2])>=500:
-      # still check the outliers
-      obj.select_set(state=True)
 bpy.ops.object.delete()
+
+#import bpy
+#import os
+
+#folder_path = "D:\\crossbell\\processed\\"
+
+#for root, dirs, files in os.walk(folder_path):
+#    for file in files:
+#        if file.endswith(".gltf"):
+#            fp = os.path.join(root,file)
+#            out = os.path.join(root, file[:-5] + ".obj")
+#            bpy.ops.import_scene.gltf(filepath=fp)
+#            bpy.ops.export_scene.obj(filepath=out)
+#            for obj in bpy.context.scene.objects: 
+#                obj.select_set(state=True)
+#            bpy.ops.object.delete()
