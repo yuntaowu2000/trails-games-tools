@@ -1919,13 +1919,7 @@ def create_texture(g, dict_data, cluster_mesh_info, cluster_header, is_cube_map)
     if ".png" in cluster_mesh_info.filename:
         depth = int(len(image_data) / image_height / image_width)
         image_byte_data = numpy.frombuffer(image_data, dtype=numpy.uint8)
-        arr = numpy.zeros([image_height, image_width, depth], dtype=numpy.uint8)
-        k = 0
-        for i in range(image_height):
-            for j in range(image_width):
-                for d in range(depth):
-                    arr[i][j][d] = image_byte_data[k]
-                    k += 1
+        arr = image_byte_data.reshape((image_height, image_width, depth))
         img = Image.fromarray(arr)
         img = ImageOps.flip(img)
         img.save(cluster_mesh_info.filename[:-6])

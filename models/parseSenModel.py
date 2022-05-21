@@ -10,7 +10,7 @@ map_id = sys.argv[1]
 xml_file = "E:\\SteamLibrary\\steamapps\\common\\THE LEGEND OF HEROES HAJIMARI NO KISEKI\\data\\ops\\" + map_id + ".ops"
 path = "E:\\SteamLibrary\\steamapps\\common\\THE LEGEND OF HEROES HAJIMARI NO KISEKI\\data\\asset\\D3D11\\"
 
-with open(xml_file, 'r') as f:
+with open(xml_file, 'r', encoding="utf-8") as f:
     data = f.read()
 
 bs_data = BeautifulSoup(data, "xml")
