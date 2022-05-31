@@ -1,5 +1,5 @@
 requests
-PIL
+pillow
 wand
 bs4
 azure.cognitiveservices.vision.computervision
