@@ -1727,7 +1727,7 @@ class TED8PkgMedia(IStorageMedia):
             self.f.seek(4, io.SEEK_CUR)
         if file_entry[3] & 4:
             output_data = uncompress_lz4(self.f, file_entry[2], file_entry[1])
-        elif file_entry[3] & 8:
+        elif file_entry[3] & 8 or file_entry[3] & 16:
             dctx = zstd.ZstdDecompressor()
             output_data = b""
             output_data_iter = dctx.read_to_iter(self.f, file_entry[2], file_entry[1])
