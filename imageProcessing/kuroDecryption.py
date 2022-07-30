@@ -33,21 +33,24 @@ def main(fn):
             else:
                 print("unknown header")
                 return
-        else:
+        elif magic == b'D9BA':
             compressed_size = f.read(4)
             compressed_size = int.from_bytes(compressed_size, "little")
             data = f.read(compressed_size)
+        else:
+            print("unknown header")
+            return
         if need_decompression:
             decompressed = decompress(data)
 
-    out_fn = fn.split("\\")[-1]
+    out_fn = "out_" + fn.split("\\")[-1]
 
     with open(out_fn, "wb") as f:
         f.write(decompressed)
 
     if out_fn.endswith("dds"):
         im = Image.open(out_fn)
-        im.save(f[:-3] + "png")
+        im.save(out_fn[4:-3] + "png")
 
 if __name__ == "__main__":
     fn = sys.argv[1]
