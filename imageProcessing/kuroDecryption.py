@@ -43,7 +43,6 @@ def main(fn):
     if out_fn.endswith("dds"):
         f = out_fn
         im = Image.open(f)
-        im = im.transpose(Image.FLIP_TOP_BOTTOM)
         im.save(f[:-3] + "png")
 
 if __name__ == "__main__":
