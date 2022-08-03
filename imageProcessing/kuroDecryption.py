@@ -55,7 +55,7 @@ def main(fn):
 
     if out_fn.endswith("dds"):
         im = Image.open(out_fn)
-        im.save(out_fn[4:-3] + "png")
+        im.save(out_fn[:-3] + "png")
 
 if __name__ == "__main__":
     fn = sys.argv[1]
