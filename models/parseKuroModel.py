@@ -42,8 +42,7 @@ def decrpyt_and_decompress(f):
     return decompressed
 
 # replace with the map name e.g. t0000 and your own path
-# map_id = sys.argv[1]
-map_id = "c0090"
+map_id = sys.argv[1]
 GAME_ROOT = "E:\\SteamLibrary\\steamapps\\common\\THE LEGEND OF HEROES KURO NO KISEKI\\"
 BASE_MDL_PATH = GAME_ROOT + "c\\asset\\common\\model\\"
 BASE_SCENE_PATH = GAME_ROOT + "f\\scene\\"
@@ -67,14 +66,13 @@ except:
 json_obj = json.loads(val)
 actors = json_obj["Actor"]
 for v in actors:
-    if v["type"] != "MapObject": continue
+    if v["type"] != "MapObject" and v["type"] != "FieldTerrain": continue
 
     curr_data = {}
     curr_data["name"] = v["name"]
     # curr_data["map_asset"] = v["model_path"] + ".glb"
     curr_data["map_asset"] = v["model_path"] + ".gltf"
-    # if not os.path.exists(v["model_path"] + ".mdl"):
-    if True:
+    if not os.path.exists(v["model_path"] + ".mdl"):
         mdl_to_unpack.add(v["model_path"] + ".mdl")
     
     curr_data["pos"] = str(v["translation"]["x"]) + "," + str(v["translation"]["y"]) + "," + str(v["translation"]["z"])
