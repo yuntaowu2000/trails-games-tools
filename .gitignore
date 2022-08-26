@@ -2,3 +2,4 @@
 *.txt
 *.json
 *.xlsx
+**/testfiles/**

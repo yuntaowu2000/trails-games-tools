@@ -40,7 +40,7 @@ for obj in bpy.context.scene.objects:
    if obj.name[0:2] in shapes_to_exclude or "shadow" in obj.name or "light_locator" in obj.name or "light_all" in obj.name:
       # collider, shadow, lights
       obj.select_set(state=True)
-   if "directionalLight" in obj.name or "bill" in obj.name or "box_" in obj.name or "half_sphere" in obj.name or:
+   if "directionalLight" in obj.name or "bill" in obj.name or "box_" in obj.name or "half_sphere" in obj.name:
       # light effects, skybox
       obj.select_set(state=True)
    if "_etc" in obj.name or "window_dawn" in obj.name or "window_evening" in obj.name or "window_morning" in obj.name or "window_night" in obj.name:

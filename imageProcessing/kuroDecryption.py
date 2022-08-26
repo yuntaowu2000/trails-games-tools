@@ -3,7 +3,7 @@ import zstandard as zstd
 import sys, os
 from PIL import Image
 
-# key and IV from 
+# key and IV from https://github.com/nnguyen259/KuroTools
 KEY = b'\x16\x4B\x7D\x0F\x4F\xA7\x4C\xAC\xD3\x7A\x06\xD9\xF8\x6D\x20\x94'
 IV = b'\x9D\x8F\x9D\xA1\x49\x60\xCC\x4C'
 
