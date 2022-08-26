@@ -65,6 +65,7 @@ except:
 # write out the parsed json for composing all the components of the map
 json_obj = json.loads(val)
 actors = json_obj["Actor"]
+# for common objects and buildings
 for v in actors:
     if v["type"] != "MapObject" and v["type"] != "FieldTerrain": continue
 
@@ -79,11 +80,35 @@ for v in actors:
     
     # to get consistency with sen models
     # easier integration in blender
-    curr_data["rot"] = str(v["rotation"]["x"] / 180 * math.pi) + "," + str(v["rotation"]["y"] / 180 * math.pi) + "," + str(v["rotation"]["z"] / 180 * math.pi)
-
+    if abs(v["rotation"]["x"]) <= 1e-3 and abs(v["rotation"]["z"]) <= 1e-3:
+        curr_data["rot"] = str(v["rotation"]["x"] / 180 * math.pi) + "," + str(v["rotation"]["y"] / 180 * math.pi) + "," + str(v["rotation"]["z"] / 180 * math.pi)
+    else:
+        curr_data["rot"] = str(v["rotation"]["x"] / 180 * math.pi) + "," + str(-v["rotation"]["y"] / 180 * math.pi) + "," + str(v["rotation"]["z"] / 180 * math.pi)
     curr_data["scale"] = str(v["scale"]["x"]) + "," + str(v["scale"]["y"]) + "," + str(v["scale"]["z"])
 
     data_list.append(curr_data)
+
+# for enterable buildings
+if json_obj["SceneTree"] is not None and json_obj["SceneTree"]["Nodes"] is not None:
+    nodes = json_obj["SceneTree"]["Nodes"]
+    for v in nodes:
+        if v["type"] != 3: continue
+        curr_data = {}
+        curr_data["name"] = v["name"]
+        # curr_data["map_asset"] = v["model_path"] + ".glb"
+        curr_data["map_asset"] = v["filename"] + ".gltf"
+        if not os.path.exists(v["filename"] + ".mdl") and os.path.exists(BASE_MDL_PATH + v["filename"] + ".mdl"):
+            mdl_to_unpack.add(v["filename"] + ".mdl")
+        
+        curr_data["pos"] = str(v["translation"]["x"]) + "," + str(v["translation"]["y"]) + "," + str(v["translation"]["z"])
+        
+        if abs(v["rotation"]["x"]) <= 1e-3 and abs(v["rotation"]["z"]) <= 1e-3:
+            curr_data["rot"] = str(v["rotation"]["x"] / 180 * math.pi) + "," + str(v["rotation"]["y"] / 180 * math.pi) + "," + str(v["rotation"]["z"] / 180 * math.pi)
+        else:
+            curr_data["rot"] = str(v["rotation"]["x"] / 180 * math.pi) + "," + str(-v["rotation"]["y"] / 180 * math.pi) + "," + str(v["rotation"]["z"] / 180 * math.pi)
+        curr_data["scale"] = str(v["scale"]["x"]) + "," + str(v["scale"]["y"]) + "," + str(v["scale"]["z"])
+
+        data_list.append(curr_data)
 
 data_json = json.dumps(data_list, indent=4)
 
@@ -118,6 +143,8 @@ for mdl in mdl_to_unpack:
 
 print("decoding images")
 for im in all_images:
+    if os.path.exists(im[:-3] + "png"):
+        continue
     if os.path.exists(BASE_IM_PATH1 + im):
         with open(BASE_IM_PATH1 + im, "rb") as f:
             decompressed = decrpyt_and_decompress(f)
