@@ -110,7 +110,7 @@ def uncompress(compressed_bytes, original_len):
     
     return compressed_bytes[4:]
 
-def itp2dds(path):
+def itp2dds(path, is_nis=False):
     out_name = path[:-3] + "dds"
     with open(path, "rb") as f:
         magic = struct.unpack(">I", f.read(4))[0]
@@ -149,13 +149,16 @@ def itp2dds(path):
                     curr_im[rptr:rptr+sz_original] = uncompress(compressed, sz_original)
                     rptr += sz_original
                 images.append(curr_im)
-        images[0] = untile(images[0], width >> 2, height >> 2, 4*4)
+        if is_nis == False:
+            # NIS version doesn't require untiling.
+            images[0] = untile(images[0], width >> 2, height >> 2, 4*4)
     
         bc72dds(images[0], height, width, out_name)
     
 
 fn = sys.argv[1]
-itp2dds(fn)
+is_nis = sys.argv[2] if len(sys.argv) >= 3 else False
+itp2dds(fn, is_nis)
 
 im = Image.open(fn[:-3]+"dds")
 im.save(fn[:-3]+"png")
