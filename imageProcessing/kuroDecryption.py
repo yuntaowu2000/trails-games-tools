@@ -29,12 +29,9 @@ def main(fn):
                 compressed_size = data[4:8]
                 compressed_size = int.from_bytes(compressed_size, "little")
                 data = data[8:8+compressed_size]
-            elif data[0:4] == b'\x89PNG':
+            else:
                 decompressed = data
                 need_decompression = False
-            else:
-                print("unknown header")
-                return
         elif magic == b'D9BA':
             compressed_size = f.read(4)
             compressed_size = int.from_bytes(compressed_size, "little")
