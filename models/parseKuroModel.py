@@ -40,7 +40,7 @@ def decrpyt_and_decompress(f):
 
 # replace with the map name e.g. t0000 and your own path
 map_id = sys.argv[1]
-GAME_ROOT = "E:\\SteamLibrary\\steamapps\\common\\THE LEGEND OF HEROES KURO NO KISEKI\\"
+GAME_ROOT = "D:\\Games\\Steam\\steamapps\\common\\THE LEGEND OF HEROES KURO NO KISEKI2\\"
 BASE_MDL_PATH = GAME_ROOT + "c\\asset\\common\\model\\"
 BASE_SCENE_PATH = GAME_ROOT + "f\\scene\\"
 BASE_IM_PATH1 = GAME_ROOT + "c\\asset\\dx11\\image\\"
@@ -89,6 +89,8 @@ for v in actors:
 if json_obj["SceneTree"] is not None and json_obj["SceneTree"]["Nodes"] is not None:
     nodes = json_obj["SceneTree"]["Nodes"]
     for v in nodes:
+        if v["type"] == 2 and len(v["Nodes"]) > 0:
+            nodes.extend(v["Nodes"])
         if v["type"] != 3: continue
         curr_data = {}
         curr_data["name"] = v["name"]
