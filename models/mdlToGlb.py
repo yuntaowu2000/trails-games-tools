@@ -245,6 +245,11 @@ def read_mdl_to_gltf(infn):
 		scene["nodes"] = [0]
 		scenes.append(scene)
 	gltf_data["scenes"] = scenes
+
+	mdl_version = []
+
+	primitive_shiz = []
+
 	all_images = set()
 
 	def append_vertex_data(data_bytes, data_count=0, component_type=5126, value_type="VEC3"):
@@ -282,9 +287,18 @@ def read_mdl_to_gltf(infn):
 		return f.read(sz)
 
 	jointshiz = []
-	def read_vertex_data(f, xexe):
+	def read_vertex_data(f, mesh_index, submesh_index, vertex_dump):
 		material_offset = int.from_bytes(f.read(4), byteorder="little") # material offset ?
-		num_of_elements = int.from_bytes(f.read(4), byteorder="little") # total amount of chunks
+		num_of_elements = 0
+		primitive_data_for_vertex = []
+		if mdl_version[0] != 1:
+			primitive_data_for_vertex = [x for x in primitive_shiz if x["mesh"] == mesh_index and x["submesh"] == submesh_index]
+		if mdl_version[0] == 1:
+			num_of_elements = int.from_bytes(f.read(4), byteorder="little") # total amount of chunks
+		else:
+			num_of_elements = len(primitive_data_for_vertex)
+			triangle_count = int.from_bytes(f.read(4), byteorder="little")
+			f.read(4) # unk
 
 		primitive = {}
 		attributes = {}
@@ -296,54 +310,99 @@ def read_mdl_to_gltf(infn):
 		color_count = 0
 		ibm_count = 0
 		for i in range(num_of_elements):
+			primitive_obj = None
+			if mdl_version[0] != 1:
+				primitive_obj = primitive_data_for_vertex[i]
 			# type of chunk
-			type_int = int.from_bytes(f.read(4), byteorder="little")
+			type_int = 0
+			if mdl_version[0] == 1:
+				type_int = int.from_bytes(f.read(4), byteorder="little")
+			else:
+				type_int = primitive_obj["type_int"]
 			# total size of chunk
-			size_int = int.from_bytes(f.read(4), byteorder="little")
+			size_int = 0
+			if mdl_version[0] == 1:
+				size_int = int.from_bytes(f.read(4), byteorder="little")
+			else:
+				size_int = primitive_obj["size_int"]
 			# stride to next set of elements
-			stride_int = int.from_bytes(f.read(4), byteorder="little")
+			stride_int = 0
+			if mdl_version[0] == 1:
+				stride_int = int.from_bytes(f.read(4), byteorder="little")
+			else:
+				stride_int = primitive_obj["stride_int"]
 			# print(type_int, size_int, stride_int)
 			data_pos = f.tell()
-			data = f.read(size_int)
-			if type_int == 0: # position (12 bytes)
+			data = b""
+			if mdl_version[0] == 1:
+				data = f.read(size_int)
+			else:
+				data = primitive_obj["data_bytes"]
+			if type_int == 0: # Position (12 bytes) (Validated using RenderDoc)
 				if stride_int != 12:
 					raise Exception("Unhandled stride " + str(stride_int))
+				if vertex_dump:
+					print("TYPE INT 0")
+					n = list(memoryview(data).cast("f"))
+					for i in range(0, len(n), 3):
+						print("%f %f %f" % (n[i + 0], n[i + 1], n[i + 2]))
 				if "POSITION" in attributes:
 					raise Exception("Position already in attributes")
 				attributes["POSITION"] = append_vertex_data(data, size_int // stride_int, 5126, "VEC3")
-			elif type_int == 1: # normal (-1 to 1) (12 bytes)
+			elif type_int == 1: # Normal (12 bytes) (Validated using RenderDoc)
 				if stride_int != 12:
 					raise Exception("Unhandled stride " + str(stride_int))
+				if vertex_dump:
+					print("TYPE INT 1")
+					n = list(memoryview(data).cast("f"))
+					for i in range(0, len(n), 3):
+						print("%f %f %f" % (n[i + 0], n[i + 1], n[i + 2]))
 				attributes["NORMAL"] = append_vertex_data(data, size_int // stride_int, 5126, "VEC3")
-			elif type_int == 2: # color (12 bytes)
+			elif type_int == 2: # Tangent (12 bytes) (Validated using RenderDoc)
 				if stride_int != 12:
 					raise Exception("Unhandled stride " + str(stride_int))
-
-			elif type_int == 3: # ??? (16 bytes, split into 2 chunks)
-				if stride_int != 16:
+				if vertex_dump:
+					print("TYPE INT 2")
+					n = list(memoryview(data).cast("f"))
+					for i in range(0, len(n), 3):
+						print("%f %f %f" % (n[i + 0], n[i + 1], n[i + 2]))
+				attributes["TANGENT"] = append_vertex_data(data, size_int // stride_int, 5126, "VEC3")
+			elif type_int == 3: # ??? (16 bytes, split into 2 chunks, or 4 bytes split into 2 chunks)
+				if stride_int != 16 and stride_int != 4:
 					raise Exception("Unhandled stride " + str(stride_int))
+				if vertex_dump:
+					print("TYPE INT 3")
+					if stride_int == 16:
+						n = list(memoryview(data).cast("f"))
+						for i in range(0, len(n), 4):
+							print("%f %f %f %f" % (n[i + 0], n[i + 1], n[i + 2], n[i + 3]))
+					elif stride_int == 4:
+						n = list(memoryview(data).cast("I"))
+						for i in range(0, len(n), 1):
+							print("%d" % (n[i + 0]))
 				# attributes["COLOR_" + str(color_count)] = append_vertex_data(data, size_int // stride_int, 5126, "VEC4")
 				# color_count += 1
 				# mv = memoryview(data).cast("f")
 				ibm_count += 1
-			elif type_int == 4: # UVs (8 bytes)
+			elif type_int == 4: # Texcoord (8 bytes) (Validated using RenderDoc)
 				if stride_int != 8:
 					raise Exception("Unhandled stride " + str(stride_int))
+				if vertex_dump:
+					print("TYPE INT 4")
+					n = list(memoryview(data).cast("f"))
+					for i in range(0, len(n), 2):
+						print("%f %f" % (n[i + 0], n[i + 1]))
 				texcoords_modded = array.array("f", data)
-				# flip Vs
-				# alternative method: use KHR_texture_transform
-				for i in range(len(texcoords_modded)):
-					cl = texcoords_modded[i]
-					# TODO: Why does V need to be offset?
-					if (i % 2) == 1:
-						# V
-						cl += 1
-					texcoords_modded[i] = cl
 				attributes["TEXCOORD_" + str(texcoord_count)] = append_vertex_data(bytes(texcoords_modded), size_int // stride_int, 5126, "VEC2")
 				texcoord_count += 1
-			elif type_int == 5: # weights (16 bytes)
+			elif type_int == 5: # Blend weights (16 bytes) (Validated using RenderDoc)
 				if stride_int != 16:
 					raise Exception("Unhandled stride " + str(stride_int))
+				if vertex_dump:
+					print("TYPE INT 5")
+					n = list(memoryview(data).cast("f"))
+					for i in range(0, len(n), 4):
+						print("%f %f %f %f" % (n[i + 0], n[i + 1], n[i + 2], n[i + 3]))
 				weights_clamped = array.array("f", data)
 				for i in range(len(weights_clamped)):
 					cl = weights_clamped[i]
@@ -357,14 +416,24 @@ def read_mdl_to_gltf(infn):
 			elif type_int == 6: # joints (16 bytes)
 				if stride_int != 16:
 					raise Exception("Unhandled stride " + str(stride_int))
+				if vertex_dump:
+					print("TYPE INT 6")
+					n = list(memoryview(data).cast("f"))
+					for i in range(0, len(n), 4):
+						print("%f %f %f %f" % (n[i + 0], n[i + 1], n[i + 2], n[i + 3]))
 				bax = memoryview(bytearray(data_reduce_int_to_short(data))).cast("H")
 				for i in range(len(bax)):
 					bax[i] += 0
 				attributes["JOINTS_" + str(joint_count)] = append_vertex_data(bytes(bax), size_int // stride_int, 5123, "VEC4")
 				joint_count += 1
-			elif type_int == 7: # indexes (4 bytes)
+			elif type_int == 7: # Indexes (4 bytes) (Validated using RenderDoc)
 				if stride_int != 4:
 					raise Exception("Unhandled stride " + str(stride_int))
+				if vertex_dump:
+					print("TYPE INT 7")
+					n = list(memoryview(data).cast("I"))
+					for i in range(0, len(n), 1):
+						print("%d" % (n[i + 0]))
 				primitive["indices"] = append_vertex_data(data, size_int // stride_int, 5125, "SCALAR")
 				primitive["mode"] = 4 # TRIANGLES
 			else:
@@ -390,6 +459,7 @@ def read_mdl_to_gltf(infn):
 		f = io.BytesIO(dat)
 		num_of_elements = int.from_bytes(f.read(4), byteorder="little") # number of elements (5)
 		for i in range(num_of_elements):
+			vertex_dump = False
 			name = read_pascal_string(f)
 			name = name.decode("ASCII")
 			total_size_of_section = int.from_bytes(f.read(4), byteorder="little") # Total size of section: 1856
@@ -400,7 +470,7 @@ def read_mdl_to_gltf(infn):
 			mesh["name"] = name
 			mesh["primitives"] = []
 			for ii in range(primitive_count):
-				mesh["primitives"].append(read_vertex_data(f_section_data, i))
+				mesh["primitives"].append(read_vertex_data(f_section_data, i, ii, vertex_dump))
 			node_count = int.from_bytes(f_section_data.read(4), byteorder="little")
 			if node_count > 0:
 				skin_unprocessed = {}
@@ -479,18 +549,39 @@ def read_mdl_to_gltf(infn):
 	def read_material_data(dat):
 		f = io.BytesIO(dat)
 		num_of_elements = int.from_bytes(f.read(4), byteorder="little") # number of elements (2)
+		matinfo_all = []
 		for i in range(num_of_elements):
+			matinfo = {}
 			material_name1 = read_pascal_string(f)
 			shader_name = read_pascal_string(f)
 			str3 = read_pascal_string(f)
-			shader_info = ed9_asset_config_shader_info[shader_name.decode("ASCII")]
+			shader_name_ascii = shader_name.decode("ASCII")
+			matinfo["material_name1"] = material_name1.decode("ASCII")
+			matinfo["shader_name"] = shader_name_ascii
+			matinfo["str3"] = str3.decode("ASCII")
+			shader_info = {}
+			if shader_name_ascii in ed9_asset_config_shader_info:
+				shader_info = ed9_asset_config_shader_info[shader_name_ascii]
 			num_of_elements_textures = int.from_bytes(f.read(4), byteorder="little")
 			switch_to_texture_id = {}
+			texinfo_all = []
+			matinfo["texinfo_all"] = texinfo_all
 			for ii in range(num_of_elements_textures):
+				texinfo = {}
 				texture_name = read_pascal_string(f)
+				texinfo["texture_name"] = texture_name.decode("ASCII")
 				texture_slot = int.from_bytes(f.read(4), byteorder="little")
-				unk_01 = int.from_bytes(f.read(4), byteorder="little")
-				unk_02 = int.from_bytes(f.read(4), byteorder="little")
+				texinfo["texture_slot"] = texture_slot
+				if mdl_version[0] != 1:
+					unk_00 = int.from_bytes(f.read(4), byteorder="little")
+					texinfo["unk_00"] = unk_00
+				texture_wrap_u = int.from_bytes(f.read(4), byteorder="little")
+				texinfo["texture_wrap_u"] = texture_wrap_u
+				texture_wrap_v = int.from_bytes(f.read(4), byteorder="little")
+				texinfo["texture_wrap_v"] = texture_wrap_v
+				if mdl_version[0] != 1:
+					unk_03 = int.from_bytes(f.read(4), byteorder="little")
+					texinfo["unk_03"] = unk_03
 				image_name = texture_name.decode("ASCII")
 				image = {}
 				if True:
@@ -499,9 +590,19 @@ def read_mdl_to_gltf(infn):
 				image_id = len(images)
 				images.append(image)
 				sampler = {}
-				# TODO: figure out wrapping mode
-				sampler["wrapS"] = 33648 # MIRROR
-				sampler["wrapT"] = 33648 # MIRROR
+				texture_wrap_map = {
+					0 : 10497, # REPEAT
+					1 : 33648, # MIRRORED_REPEAT
+					2 : 33071, # CLAMP_TO_EDGE
+				}
+				texture_wrap_u_gltf = 10497
+				if texture_wrap_u in texture_wrap_map:
+					texture_wrap_u_gltf = texture_wrap_map[texture_wrap_u]
+				sampler["wrapS"] = texture_wrap_u_gltf # MIRROR
+				texture_wrap_v_gltf = 10497
+				if texture_wrap_v in texture_wrap_map:
+					texture_wrap_v_gltf = texture_wrap_map[texture_wrap_v]
+				sampler["wrapT"] = texture_wrap_v_gltf # MIRROR
 				sampler_id = len(samplers)
 				samplers.append(sampler)
 				texture = {}
@@ -512,80 +613,132 @@ def read_mdl_to_gltf(infn):
 				# print(material_name1, shader_info[texture_slot], image_name)
 				# print(image_name)
 				if texture_slot in shader_info:
+					texinfo["texture_switch"] = shader_info[texture_slot]
 					switch_to_texture_id[shader_info[texture_slot]] = texture_id
+				texinfo_all.append(texinfo)
+			shaderparaminfo_all = []
+			matinfo["shaderparaminfo_all"] = shaderparaminfo_all
 			num_of_elements_shaderparam = int.from_bytes(f.read(4), byteorder="little") # number of elements (2)
 			for ii in range(num_of_elements_shaderparam):
+				shaderparaminfo = {}
 				shaderparam_name = read_pascal_string(f)
+				shaderparaminfo["shaderparam_name"] = shaderparam_name.decode("ASCII")
+				shaderparam_data = []
+				shaderparaminfo["shaderparam_data"] = shaderparam_data
 				type_int = int.from_bytes(f.read(4), byteorder="little")
-				if type_int in [0, 1, 4]:
-					f.read(4)
-				elif type_int in [2, 5]: # floats?
-					f.read(4)
-					f.read(4)
-				elif type_int in [3, 6]: # floats
-					f.read(4)
-					f.read(4)
-					f.read(4)
+				shaderparaminfo["type_int"] = type_int
+				if type_int in [0, 1]:
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+				elif type_int in [2]:
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+				elif type_int in [3]:
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+				elif type_int in [4]:
+					shaderparam_data.append(struct.unpack('f', f.read(4))[0])
+				elif type_int in [5]:
+					shaderparam_data.append(struct.unpack('f', f.read(4))[0])
+					shaderparam_data.append(struct.unpack('f', f.read(4))[0])
+				elif type_int in [6]:
+					shaderparam_data.append(struct.unpack('f', f.read(4))[0])
+					shaderparam_data.append(struct.unpack('f', f.read(4))[0])
+					shaderparam_data.append(struct.unpack('f', f.read(4))[0])
 				elif type_int in [7]:
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
 				elif type_int in [8]:
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
-					f.read(4)
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
+					shaderparam_data.append(int.from_bytes(f.read(4), byteorder="little"))
 
 				elif type_int == 0xFFFFFFFF:
-					break
+					continue
 				else:
 					raise Exception("Unknown material type " + str(type_int))
+				shaderparaminfo_all.append(shaderparaminfo)
 			material_switches_count = int.from_bytes(f.read(4), byteorder="little")
 			material_switches = {}
 			for ii in range(material_switches_count):
 				material_switch_str = read_pascal_string(f)
 				int2 = int.from_bytes(f.read(4), byteorder="little")
 				material_switches[material_switch_str.decode("ASCII")] = int2
+			matinfo["material_switches"] = material_switches
 
 			uv_map_index_count = (struct.unpack('I', f.read(4))[0])
+			uv_map_indices = []
+			matinfo["uv_map_indices"] = uv_map_indices
 			for ii in range(uv_map_index_count):
 				uv_map_index = (struct.unpack('B', f.read(1))[0])
+				uv_map_indices.append(uv_map_index)
 			unkX_count = (struct.unpack('I', f.read(4))[0])
+			unkX_data = []
+			matinfo["unkX_data"] = unkX_data
 			for ii in range(unkX_count):
 				unkX_x = (struct.unpack('B', f.read(1))[0])
+				unkX_data.append(unkX_x)
 			n = (struct.unpack('I', f.read(4))[0]) # unk int
+			matinfo["unk_int1"] = n
 			n = (struct.unpack('I', f.read(4))[0]) # unk int
+			matinfo["unk_int2"] = n
 			n = (struct.unpack('I', f.read(4))[0]) # unk int
+			matinfo["unk_int3"] = n
 			n = (struct.unpack('f', f.read(4))[0]) # unk int
+			matinfo["unk_int4"] = n
 			n = (struct.unpack('I', f.read(4))[0]) # unk int
+			matinfo["unk_int5"] = n
 			material = {}
 			material["name"] = material_name1.decode("ASCII")
 			# TODO: UV index
 			if "SWITCH_DIFFUSEMAP0" in switch_to_texture_id:
 				textureInfo = {}
 				textureInfo["index"] = switch_to_texture_id["SWITCH_DIFFUSEMAP0"]
+				textureInfo_extensions = {}
+				textureInfo_extensions_KHR_texture_transform = {}
+				textureInfo_extensions_KHR_texture_transform["offset"] = [0, 0]
+				textureInfo_extensions_KHR_texture_transform["rotation"] = 0
+				textureInfo_extensions_KHR_texture_transform["scale"] = [1, -1]
+				textureInfo_extensions["KHR_texture_transform"] = textureInfo_extensions_KHR_texture_transform
+				textureInfo["extensions"] = textureInfo_extensions
 				pbrMetallicRoughness = {}
 				pbrMetallicRoughness["baseColorTexture"] = textureInfo
 				pbrMetallicRoughness["metallicFactor"] = 0.0
 				material["pbrMetallicRoughness"] = pbrMetallicRoughness
 			if "SWITCH_NORMALMAP0" in switch_to_texture_id:
-				normalTextureInfo = {}
-				normalTextureInfo["index"] = switch_to_texture_id["SWITCH_DIFFUSEMAP0"]
-				material["normalTexture"] = normalTextureInfo
+				textureInfo = {}
+				textureInfo["index"] = switch_to_texture_id["SWITCH_NORMALMAP0"]
+				textureInfo_extensions = {}
+				textureInfo_extensions_KHR_texture_transform = {}
+				textureInfo_extensions_KHR_texture_transform["offset"] = [0, 0]
+				textureInfo_extensions_KHR_texture_transform["rotation"] = 0
+				textureInfo_extensions_KHR_texture_transform["scale"] = [1, -1]
+				textureInfo_extensions["KHR_texture_transform"] = textureInfo_extensions_KHR_texture_transform
+				textureInfo["extensions"] = textureInfo_extensions
+				material["normalTexture"] = textureInfo
 			materials.append(material)
+			matinfo_all.append(matinfo)
+
+		if ("ED9_DO_DUMP_MATINFO" in os.environ):
+			import json
+			with open(sys.argv[1] + ".matinfo.json", "wb") as f:
+				jsondata = json.dumps(matinfo_all, indent=4).encode("utf-8")
+				f.write(jsondata)
 
 		# print("Material data total: ", f.tell(), len(dat))
 
@@ -622,12 +775,37 @@ def read_mdl_to_gltf(infn):
 			else:
 				raise Exception("Unknown animation type " + str(type_int))
 
+	def read_primitive_data(dat):
+		f = io.BytesIO(dat)
+		num_of_elements = int.from_bytes(f.read(4), byteorder="little") # number of elements
+		for i in range(num_of_elements):
+			type_int = int.from_bytes(f.read(4), byteorder="little")
+			size_int = int.from_bytes(f.read(4), byteorder="little")
+			stride_int = int.from_bytes(f.read(4), byteorder="little")
+			mesh = int.from_bytes(f.read(4), byteorder="little")
+			submesh = int.from_bytes(f.read(4), byteorder="little")
+			dic = {}
+			dic["type_int"] = type_int
+			dic["size_int"] = size_int
+			dic["stride_int"] = stride_int
+			dic["mesh"] = mesh
+			dic["submesh"] = submesh
+			primitive_shiz.append(dic)
+		for i in range(num_of_elements):
+			x = primitive_shiz[i]
+			x["data_bytes"] = f.read(x["size_int"])
+
 	def read_mdl_core(infn):
 		with open(infn, "rb") as f:
 			mdl_first_4_bytes = f.read(4)
 			if mdl_first_4_bytes == b"MDL ":
+				ver_ident = f.read(1) # version identify
+				mdl_version.append(1 if ver_ident == b"\x01" else 2)
+				f.read(1) # unk
+				f.read(1) # unk
+				f.read(1) # unk
 				f.read(4) # unk
-				f.read(4) # unk
+				chunks = []
 				# chunk id
 				# 0: material
 				# 1: mesh
@@ -638,27 +816,52 @@ def read_mdl_to_gltf(infn):
 					chunk_id_bytes = f.read(4)
 					if len(chunk_id_bytes) != 4:
 						raise Exception("Reached premature end of file")
+					dic = {}
 					chunk_id = int.from_bytes(chunk_id_bytes, byteorder="little") # chunk id (1)
 					if chunk_id == 0xFFFFFFFF:
 						break
+					dic["chunk_id"] = chunk_id
 					chunk_length = int.from_bytes(f.read(4), byteorder="little") # length of chunk data (179683)
+					dic["chunk_length"] = chunk_length
 					chunk_pos = f.tell()
-					chunk_data = f.read(chunk_length)
-					if chunk_id == 0:
-						read_material_data(chunk_data)
-					elif chunk_id == 1:
-						read_mesh_data(chunk_data)
-					elif chunk_id == 2:
-						read_hierarchy_data(chunk_data)
-					elif chunk_id == 3:
-						read_animation_data(chunk_data)
-					else:
-						print("Unknown chunk ID " + str(chunk_id) + " " + str(f.tell()))
+					dic["chunk_pos"] = chunk_pos
+					f.seek(chunk_length, io.SEEK_CUR)
+					chunks.append(dic)
+				chunk_func_dispatch = {
+					0 : read_material_data,
+					1 : read_mesh_data,
+					2 : read_hierarchy_data,
+					3 : read_animation_data,
+					4 : read_primitive_data,
+				}
+				for chunk in chunks:
+					chunk_id = chunk["chunk_id"]
+					chunk_length = chunk["chunk_length"]
+					chunk_pos = chunk["chunk_pos"]
+					if chunk_id != 4:
+						continue
+					f.seek(chunk_pos)
+					chunk_func_dispatch[chunk_id](f.read(chunk_length))
+				for chunk in chunks:
+					chunk_id = chunk["chunk_id"]
+					chunk_length = chunk["chunk_length"]
+					chunk_pos = chunk["chunk_pos"]
+					if chunk_id != 2:
+						continue
+					f.seek(chunk_pos)
+					chunk_func_dispatch[chunk_id](f.read(chunk_length))
+				for chunk in chunks:
+					chunk_id = chunk["chunk_id"]
+					chunk_length = chunk["chunk_length"]
+					chunk_pos = chunk["chunk_pos"]
+					if chunk_id == 2 or chunk_id == 4:
+						continue
+					f.seek(chunk_pos)
+					chunk_func_dispatch[chunk_id](f.read(chunk_length))
 			else:
 				
 				if mdl_first_4_bytes in [b"C9BA", b"D9BA", b"F9BA"]:
-					print("Model files from the PC version of the game are currently not supported.")
-					print("This is a known issue; please do not report it to the author.")
+					print("Model files are encrypted. Please use `kuroDecryption.py` first or use `parseKuroModel.py` instead")
 				else:
 					print("Not a .mdl file")
 
@@ -703,6 +906,9 @@ def read_mdl_to_gltf(infn):
 						break
 					cur_node_id = node_name_to_node_parent_name[cur_node_id]
 				cur_matrix = invert_matrix_44(cur_matrix)
+				if cur_matrix == None:
+					mutated_matrix_arr.append(bytes(array.array("f", [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])))
+					continue
 				mutated_matrix_arr.append(bytes(cur_matrix))
 			ibm_data = b"".join(mutated_matrix_arr)
 			skin["inverseBindMatrices"] = append_vertex_data(ibm_data, data_count=len(skin_unprocessed["names"]), component_type=5126, value_type="MAT4")
