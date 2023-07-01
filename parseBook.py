@@ -19,7 +19,7 @@ def main():
         data = f.read()
         text = data.decode('utf-8',errors='ignore')
         # RE = re.compile(u'[⺀-⺙⺛-⻳⼀-⿕々〇〡-〩〸-〺〻㐀-䶵一-鿃豈-鶴侮-頻並-龎|，|。]', re.UNICODE)
-        RE = re.compile('[\u4e00-\u9fff|\u3001-\u303F|\uff01-\uff5d|\u2160-\u217F|\u203B|\u30FB|\u2027|\u25a0|\u2500|\uff5e|\u2026\u25c6|\u2460-\u2487]', re.UNICODE)
+        RE = re.compile('[\u4e00-\u9fff|\u3001-\u303F|\uff01-\uff5d|\u2160-\u217F|\u203B|\u30FB|\u2027|\u25a0|\u2500|\uff5e|\u2026\u25c6|\u2460-\u2487|\u3040-\u30ff]', re.UNICODE)
         chinese = RE.findall(text)
         tcscript = ''.join(chinese)
         sc = converter.convert(tcscript)

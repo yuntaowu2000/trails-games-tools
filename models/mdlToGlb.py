@@ -238,6 +238,8 @@ def read_mdl_to_gltf(infn):
 	gltf_data["materials"] = materials
 	nodes = []
 	gltf_data["nodes"] = nodes
+	animations = []
+	gltf_data["animations"] = animations
 	gltf_data["scene"] = 0
 	scenes = []
 	if True:
@@ -478,7 +480,8 @@ def read_mdl_to_gltf(infn):
 				ibm_str_arr = []
 				ibm_data_arr = []
 				for i in range(node_count):
-					ibm_str_arr.append(read_pascal_string(f_section_data).decode("ASCII"))
+					bone_target_name = read_pascal_string(f_section_data).decode("ASCII")
+					ibm_str_arr.append(bone_target_name)
 					ent = f_section_data.read(4 * 16)
 					ibm_data_arr.append(ent)
 				skin_unprocessed["names"] = ibm_str_arr
@@ -512,10 +515,10 @@ def read_mdl_to_gltf(infn):
 			position_1 = struct.unpack('f', f.read(4))[0] # unk 0
 			position_2 = struct.unpack('f', f.read(4))[0] # unk 0
 			position_3 = struct.unpack('f', f.read(4))[0] # unk 0
-			unk_2_1 = struct.unpack('I', f.read(4))[0] # unk 0 (rotation?)
-			unk_2_2 = struct.unpack('I', f.read(4))[0] # unk 0 (rotation?)
-			unk_2_3 = struct.unpack('I', f.read(4))[0] # unk 0 (rotation?)
-			unk_2_4 = struct.unpack('I', f.read(4))[0] # unk float 1 (rotation)
+			unk_2_1 = struct.unpack('f', f.read(4))[0] # unk 0 (rotation?)
+			unk_2_2 = struct.unpack('f', f.read(4))[0] # unk 0 (rotation?)
+			unk_2_3 = struct.unpack('f', f.read(4))[0] # unk 0 (rotation?)
+			unk_2_4 = struct.unpack('f', f.read(4))[0] # unk float 1 (rotation)
 			
 			skin_mesh = int.from_bytes(f.read(4), byteorder="little") # unk 0 (skin mesh?)
 			rotation_2_1 = struct.unpack('f', f.read(4))[0] # unk 0 (rotation in radians type_int==1?)
@@ -523,6 +526,8 @@ def read_mdl_to_gltf(infn):
 			rotation_2_3 = struct.unpack('f', f.read(4))[0] # unk 0 (rotation in radians type_int==1?)
 			node_rotation = [rotation_2_1, rotation_2_2, rotation_2_3]
 			arr_rad_to_quat(node_rotation)
+			# NOTE: the rotation is known to be incorrect.
+			# The bone matrices as read in the mesh data portion has correct rotations.
 			scale_1 = struct.unpack('f', f.read(4))[0] # unk float 1 (scale?)
 			scale_2 = struct.unpack('f', f.read(4))[0] # unk float 1 (scale?)
 			scale_3 = struct.unpack('f', f.read(4))[0] # unk float 1 (scale?)
@@ -532,9 +537,10 @@ def read_mdl_to_gltf(infn):
 			unk_3_3 = struct.unpack('f', f.read(4))[0] # unk 0 (position?)
 
 			node_translation = [position_1, position_2, position_3]
-			node_matrix = [0.0] * 16
-			compose_matrix_44(node_matrix, node_translation, node_rotation, node_scale)
-			node["matrix"] = node_matrix
+
+			node["translation"] = node_translation
+			node["rotation"] = node_rotation
+			node["scale"] = node_scale
 
 			children = []
 			num_of_children = int.from_bytes(f.read(4), byteorder="little") # children count
@@ -742,28 +748,55 @@ def read_mdl_to_gltf(infn):
 
 		# print("Material data total: ", f.tell(), len(dat))
 
+	animeshiz = []
 	def read_animation_data(dat):
 		f = io.BytesIO(dat)
 		num_of_elements = int.from_bytes(f.read(4), byteorder="little") # number of elements
 		for i in range(num_of_elements):
-			read_pascal_string(f)
-			read_pascal_string(f)
+			animation_name = read_pascal_string(f)
+			animation_bone = read_pascal_string(f)
 			type_int = int.from_bytes(f.read(4), byteorder="little")
 			f.read(4)
 			f.read(4)
 			num_of_keyframes = int.from_bytes(f.read(4), byteorder="little")
+			timestamps_cur = array.array('f')
+			keyframes_cur = array.array('f')
 			if type_int == 9: # translation
 				# 36 elements per entry
 				for j in range(num_of_keyframes):
-					f.read(36)
+					timestamp = struct.unpack('f', f.read(4))[0]
+					pos_x, pos_y, pos_z = struct.unpack('fff', f.read(12))
+					timestamps_cur.append(timestamp)
+					keyframes_cur.extend([pos_x, pos_y, pos_z])
+					f.read(4) # unk
+					f.read(4) # unk
+					f.read(4) # unk
+					f.read(4) # unk
+					f.read(4) # unk
 			elif type_int == 10: # rotation
 				# 40 elements per entry
 				for j in range(num_of_keyframes):
-					f.read(40)
+					timestamp = struct.unpack('f', f.read(4))[0]
+					rot_x, rot_y, rot_z, rot_w = struct.unpack('ffff', f.read(16))
+					timestamps_cur.append(timestamp)
+					keyframes_cur.extend([rot_x, rot_y, rot_z, rot_w])
+					f.read(4) # unk
+					f.read(4) # unk
+					f.read(4) # unk
+					f.read(4) # unk
+					f.read(4) # unk
 			elif type_int == 11: # scale
 				# 36 elements per entry
 				for j in range(num_of_keyframes):
-					f.read(36)
+					timestamp = struct.unpack('f', f.read(4))[0]
+					scl_x, scl_y, scl_z = struct.unpack('fff', f.read(12))
+					timestamps_cur.append(timestamp)
+					keyframes_cur.extend([scl_x, scl_y, scl_z])
+					f.read(4) # unk
+					f.read(4) # unk
+					f.read(4) # unk
+					f.read(4) # unk
+					f.read(4) # unk
 			elif type_int == 12: # shader varying
 				# 28 elements per entry
 				for j in range(num_of_keyframes):
@@ -774,6 +807,20 @@ def read_mdl_to_gltf(infn):
 					f.read(32)
 			else:
 				raise Exception("Unknown animation type " + str(type_int))
+			if len(timestamps_cur) > 0:
+				dic = {}
+				dic["name"] = animation_name.decode("ASCII")
+				dic["animation_bone"] = animation_bone.decode("ASCII")
+				dic["timestamps"] = timestamps_cur
+				dic["keyframes"] = keyframes_cur
+				type_list = {
+					9 : "translation",
+					10 : "rotation",
+					11 : "scale",
+				}
+				dic["type"] = type_list[type_int]
+				animeshiz.append(dic)
+
 
 	def read_primitive_data(dat):
 		f = io.BytesIO(dat)
@@ -865,6 +912,14 @@ def read_mdl_to_gltf(infn):
 				else:
 					print("Not a .mdl file")
 
+	def process_nodes():
+		for node in nodes:
+			node_matrix = [0.0] * 16
+			compose_matrix_44(node_matrix, node["translation"], node["rotation"], node["scale"])
+			node["matrix"] = node_matrix
+			del node["translation"]
+			del node["rotation"]
+			del node["scale"]
 
 	def process_skins():
 		node_name_to_id = {}
@@ -885,10 +940,11 @@ def read_mdl_to_gltf(infn):
 			node = nodes[i]
 			node_name_to_node_id[node["name"]] = i
 		joint_name_to_mat = {}
-		for node in nodes:
-			node_name = node["name"]
-			matrix = array.array("f", node["matrix"])
-			joint_name_to_mat[node_name] = matrix
+		if len(skins_unprocessed) > 0:
+			for node in nodes:
+				node_name = node["name"]
+				matrix = array.array("f", node["matrix"])
+				joint_name_to_mat[node_name] = matrix
 
 		for skin_unprocessed in skins_unprocessed:
 			skin = {}
@@ -926,8 +982,77 @@ def read_mdl_to_gltf(infn):
 
 			skins.append(skin)
 
+	def process_animations():
+		node_name_to_id = {}
+		for i in range(len(nodes)):
+			node_name_to_id[nodes[i]["name"]] = i
+		if len(animeshiz) == 0:
+			return
+		for x in animeshiz:
+			bone_target_name = x["animation_bone"]
+			if bone_target_name in node_name_to_id:
+				node_id = node_name_to_id[bone_target_name]
+				x["node"] = node_id
+				# node_obj = nodes[node_id]
+				# if "matrix" in node_obj:
+				# 	del node_obj["matrix"]
+
+		min_timestamp = None
+		# max_timestamp = None
+		for x in animeshiz:
+			for xx in x["timestamps"]:
+				if min_timestamp == None:
+					min_timestamp = xx
+				if min_timestamp > xx:
+					min_timestamp = xx
+				# if max_timestamp == None:
+				# 	max_timestamp = xx
+				# if max_timestamp < xx:
+				# 	max_timestamp = xx
+		for x in animeshiz:
+			ts = x["timestamps"]
+			for i in range(len(ts)):
+				ts[i] -= min_timestamp
+		animation = {}
+		# animation["name"] = x["name"]
+
+		samplers = []
+		animation["samplers"] = samplers
+
+		channels = []
+		animation["channels"] = channels
+
+		for x in animeshiz:
+
+			if "node" not in x:
+				continue
+
+			sampler = {}
+			sampler["input"] = append_vertex_data(bytes(x["timestamps"]), data_count=len(x["timestamps"]), component_type=5126, value_type="SCALAR")
+			sampler["output"] = append_vertex_data(bytes(x["keyframes"]), data_count=len(x["timestamps"]), component_type=5126, value_type="VEC" + str(len(x["keyframes"]) // len(x["timestamps"])))
+
+			channel = {}
+			target = {}
+			target["node"] = x["node"]
+			target["path"] = x["type"]
+			channel["target"] = target
+			channel["sampler"] = len(samplers)
+			samplers.append(sampler)
+			channels.append(channel)
+
+		animations.append(animation)
+
+		# if len(meshes) == 0:
+		# 	skin = {}
+		# 	joints = [x["node"] for x in animeshiz if "node" in x]
+		# 	if len(joints) > 0:
+		# 		skin["joints"] = joints
+		# 	skins.append(skin)
+
 	read_mdl_core(infn)
+	process_nodes()
 	process_skins()
+	process_animations()
 
 	if len(nodes) > 0 and len(meshes) > 0:
 		import json
